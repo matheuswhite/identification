@@ -11,6 +11,7 @@ impl LineEquation {
         Self { x0, y0, m }
     }
 
+    #[allow(unused)]
     pub fn value_at(&self, x: f32) -> f64 {
         self.m * (x - self.x0) as f64 + self.y0
     }

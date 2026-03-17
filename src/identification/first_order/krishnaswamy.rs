@@ -1,5 +1,6 @@
 use crate::identification::first_order::sundaresan::Sundaresan;
 
+#[allow(unused)]
 pub struct Krishnaswamy(pub Sundaresan);
 
 impl AsRef<Sundaresan> for Krishnaswamy {

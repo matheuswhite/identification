@@ -1,20 +1,6 @@
-use crate::{
-    csv_signal::CSVSignal,
-    identification::{
-        first_order::{
-            self, FirstOrderIdentification, hagglund::Hagglund, sundaresan::Sundaresan,
-            ziegler_nichols::ZieglerNichols,
-        },
-        second_order::{self, SecondOrderIdentification, mollenkamp::Mollenkamp},
-    },
-};
 use aule::prelude::*;
 use clap::{Parser, Subcommand};
 use std::time::Duration;
-
-mod csv_signal;
-mod identification;
-mod line_equation;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -84,13 +70,11 @@ fn identification() {
     let first_order_methods: &[(&str, &dyn FirstOrderIdentification)] = &[
         ("Ziegler-Nichols", &ZieglerNichols),
         ("Hagglund", &Hagglund),
-        ("Smith1", &first_order::smith::Smith),
-        ("Sundaresan", &Sundaresan),
+        ("Smith1", &Smith1),
+        ("Sundaresan", &SundaresanKrishnaswamy),
     ];
-    let second_order_methods: &[(&str, &dyn SecondOrderIdentification)] = &[
-        ("Mollenkamp", &Mollenkamp),
-        ("Smith2", &second_order::smith::Smith),
-    ];
+    let second_order_methods: &[(&str, &dyn SecondOrderIdentification)] =
+        &[("Mollenkamp", &Mollenkamp), ("Smith2", &Smith2)];
 
     for (filename, cutoff_freq) in files {
         println!("Processing file: {}.csv (f = {} Hz)", filename, cutoff_freq);
@@ -133,7 +117,7 @@ fn identification_first_order(
 ) -> Result<(), String> {
     let dt = 1e-3;
 
-    let mut samples = CSVSignal::new(&format!("samples/{}.csv", filename), 0, 1)
+    let mut samples = FileSamples::from_csv(&format!("samples/{}.csv", filename), 0, 1)
         .expect("Failed to read CSV signal");
 
     let mut filter = LowPass::<f64>::new(cutoff_freq, Duration::from_secs_f64(dt as f64));
@@ -144,11 +128,13 @@ fn identification_first_order(
 
     let identification = method
         .from_step_response(filtered_samples.clone())
-        .ok_or("Failed to identify system")?;
+        .map_err(|err| format!("Failed to identify system: {:?}", err))?;
     println!("\t{} parameters: {}", method_name, identification);
 
     let time = EndlessTime::new(dt);
-    let (detected_system, mut delay) = identification.try_into()?;
+    let (detected_system, mut delay) = identification
+        .try_into()
+        .map_err(|err| format!("Fail to identify system: {:?}", err))?;
     let mut detected_system = detected_system.to_ss_controllable(RK4);
     let mut plotter = Plotter::<3, f64>::new(format!("{} - {}", filename, method_name));
     let mut step = Step::new(1.0);
@@ -194,7 +180,7 @@ fn identification_second_order(
 ) -> Result<(), String> {
     let dt = 1e-3;
 
-    let mut samples = CSVSignal::new(&format!("samples/{}.csv", filename), 0, 1)
+    let mut samples = FileSamples::from_csv(&format!("samples/{}.csv", filename), 0, 1)
         .expect("Failed to read CSV signal");
     let mut filter = LowPass::<f64>::new(cutoff_freq, Duration::from_secs_f64(dt as f64));
     let mut sample_clone = samples.clone();
@@ -204,11 +190,13 @@ fn identification_second_order(
 
     let identification = method
         .from_step_response(filtered_samples.clone())
-        .ok_or("Failed to identify system")?;
+        .map_err(|err| format!("Failed to identify system: {:?}", err))?;
     println!("\t{} parameters: {}", method_name, identification);
 
     let time = EndlessTime::new(dt);
-    let (detected_system, mut delay) = identification.try_into()?;
+    let (detected_system, mut delay) = identification
+        .try_into()
+        .map_err(|err| format!("Failed to identify system: {:?}", err))?;
     let mut detected_system = detected_system.to_ss_controllable(RK4);
     let mut plotter = Plotter::<3, f64>::new(format!("{} - {}", filename, method_name));
     let mut step = Step::new(1.0);

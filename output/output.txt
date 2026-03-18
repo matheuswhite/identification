@@ -1,4 +1,4 @@
-    Finished `release` profile [optimized] target(s) in 0.57s
+    Finished `release` profile [optimized] target(s) in 0.61s
      Running `target/release/ident identification`
 Processing file: conjunto1.csv (f = 10 Hz)
 	Ziegler-Nichols parameters: K: 0.9957332613219338, θ: 0.011800445210023304, τ: 0.13073495260063722
